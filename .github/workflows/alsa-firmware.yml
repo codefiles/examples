@@ -1,0 +1,32 @@
+name: Arch Linux alsa-firmware
+
+on: workflow_dispatch
+
+jobs:
+  setup-run:
+
+    runs-on: ubuntu-latest
+
+    container:
+      image: archlinux:latest
+      volumes:
+        - /etc/machine-id:/etc/machine-id
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Initialize Pacman keyring
+      run: pacman-key --init && pacman-key --populate
+    - name: Upgrade system and install Python package
+      run: pacman -Syu --noconfirm python
+    - name: Download Linux kernel package
+      run: pacman -Swdd --noconfirm linux
+    - name: Extract Linux kernel package sound directory
+      run: |
+        bsdtar xf \
+          $(pacman -Spdd linux | cut -d / -f 3-) \
+          'usr/lib/modules/*/kernel/sound/'
+      working-directory: /
+    - name: Sync files database
+      run: pacman -Fy
+    - name: Run Python script
+      run: python src/alsa-firmware.py
