@@ -1,5 +1,6 @@
 import sys
 
+from errno import ENOENT
 from pathlib import Path
 from dataclasses import dataclass, field
 from subprocess import run, CalledProcessError
@@ -28,6 +29,10 @@ def sound_modules() -> List[Path]:
     """
     modules = Path('/usr/lib/modules')
     subdirs = [p for p in modules.iterdir() if p.is_dir()]
+
+    if not len(subdirs):
+        raise FileNotFoundError(
+                ENOENT, f"No subdirectory found in directory: '{modules}'")
 
     if len(subdirs) == 1:
         kernel_ver_dir = subdirs[0]
@@ -109,6 +114,12 @@ def main() -> None:
 
     try:
         modules = sound_modules()
+    # Modules directory or a kernel directory does not exist
+    except FileNotFoundError as error:
+        print(error, file=sys.stderr)
+        sys.exit(1)
+
+    try:
         firmware = firmware_files(package)
     # Database files do not exist or package was not found
     except CalledProcessError as error:
@@ -120,11 +131,10 @@ def main() -> None:
     print(f'Sound LKMs with firmware provided by the `{package}` package: ',
           end='\n\n')
 
-    indent = '\t'
     tuple_str = 'modules = (\n'
 
     for module_data in data:
-        tuple_str += f"{indent}'{module_data.name}',\n"
+        tuple_str += f"\t'{module_data.name}',\n"
 
         print(module_data, end='\n\n')
 
